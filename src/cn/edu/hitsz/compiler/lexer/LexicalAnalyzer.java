@@ -4,6 +4,7 @@ import cn.edu.hitsz.compiler.NotImplementedException;
 import cn.edu.hitsz.compiler.symtab.SymbolTable;
 import cn.edu.hitsz.compiler.utils.FileUtils;
 
+import java.util.*;
 import java.util.stream.StreamSupport;
 
 /**
@@ -16,6 +17,8 @@ import java.util.stream.StreamSupport;
  */
 public class LexicalAnalyzer {
     private final SymbolTable symbolTable;
+    private final Queue<Character> buffer = new ArrayDeque<>();
+    private final List<Token> result = new LinkedList<>();
 
     public LexicalAnalyzer(SymbolTable symbolTable) {
         this.symbolTable = symbolTable;
@@ -28,20 +31,129 @@ public class LexicalAnalyzer {
      * @param path 路径
      */
     public void loadFile(String path) {
-        // TODO: 词法分析前的缓冲区实现
+        // 词法分析前的缓冲区实现
         // 可自由实现各类缓冲区
         // 或直接采用完整读入方法
-        throw new NotImplementedException();
+        var content = FileUtils.readFile(path);
+        for (var c : content.toCharArray()) {
+            buffer.add(c);
+        }
+        buffer.add('$');
     }
 
+    enum State {
+        INIT,
+        EQUAL, // =
+        COMA, // ,
+        SEMICOLON, // ;
+        PLUS, // +
+        MINUS, // -
+        CROSS, // *
+        DIVIDE, // /
+        L_PAR, // (
+        R_PAR, // )
+        KW_INT, // int, maybe -> ID
+        KW_RETURN, // return, maybe -> ID
+        ID, // 标识符[a-zA-Z_][a-zA-Z]*
+        INT_CONST, // 整数常量[0-9]+
+    }
+    Map<State, String> kwStr = new HashMap<>() {{
+        put(State.KW_INT, "int");
+        put(State.KW_RETURN, "return");
+    }};
     /**
      * 执行词法分析, 准备好用于返回的 token 列表 <br>
      * 需要维护实验一所需的符号表条目, 而得在语法分析中才能确定的符号表条目的成员可以先设置为 null
      */
     public void run() {
-        // TODO: 自动机实现的词法分析过程
-        throw new NotImplementedException();
+        // 自动机实现的词法分析过程
+        State state = State.INIT;
+        StringBuilder text = new StringBuilder();
+        char cur = 0;
+        boolean nxt = true;
+        while (true) {
+            if (nxt) {
+                cur = buffer.poll();
+                assert cur != 0;
+            }
+            nxt = true;
+            text.append(cur);
+            if (state == State.INIT && cur == '$') {
+                // finish
+                result.add(Token.simple(TokenKind.fromString("$")));
+                break;
+            }
+            switch (state) {
+                case INIT -> {
+                    switch (cur) {
+                        case ' ', '\t', '\n', '\r' -> text.deleteCharAt(text.length()-1);
+                        case '=' -> state = State.EQUAL;
+                        case ',' -> state = State.COMA;
+                        case ';' -> state = State.SEMICOLON;
+                        case '+' -> state = State.PLUS;
+                        case '-' -> state = State.MINUS;
+                        case '*' -> state = State.CROSS;
+                        case '/' -> state = State.DIVIDE;
+                        case '(' -> state = State.L_PAR;
+                        case ')' -> state = State.R_PAR;
+                        case 'i' -> state = State.KW_INT;
+                        case 'r' -> state = State.KW_RETURN;
+                        case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> { state = State.INT_CONST; }
+                        default -> {
+                            if (Character.isLetter(cur)) {
+                                state = State.ID;
+                            } else {
+                                throw new RuntimeException("Unexpected character: " + cur);
+                            }
+                        }
+                    }
+                }
+                case EQUAL, COMA, SEMICOLON, PLUS, MINUS, CROSS, DIVIDE, L_PAR, R_PAR -> {
+                    // commit
+                    text.deleteCharAt(text.length()-1);
+                    nxt = false; state = State.INIT;
+                    result.add(Token.simple(TokenKind.fromString(text.toString())));
+                    text.delete(0, text.length());
+                }
+                case KW_INT, KW_RETURN -> {
+                    String kw = kwStr.get(state);
+                    if (text.length() > kw.length()) {
+                        // commit
+                        text.deleteCharAt(text.length()-1);
+                        nxt = false; state = State.INIT;
+                        result.add(Token.simple(TokenKind.fromString(text.toString())));
+                        text.delete(0, text.length());
+                    } else if (kw.charAt(text.length()-1) != text.charAt(text.length()-1)) {
+                        // mismatch
+                        text.deleteCharAt(text.length()-1);
+                        nxt = false; state = State.ID;
+                    }
+                    // continue matching
+                }
+                case INT_CONST -> {
+                    if (!Character.isDigit(cur)) {
+                        // commit
+                        text.deleteCharAt(text.length()-1);
+                        nxt = false; state = State.INIT;
+                        result.add(Token.normal(TokenKind.fromString("IntConst"), text.toString()));
+                        text.delete(0, text.length());
+                    }
+                    // continue matching
+                }
+                case ID -> {
+                    if (!Character.isLetter(cur)) {
+                        // commit
+                        text.deleteCharAt(text.length()-1);
+                        nxt = false; state = State.INIT;
+                        result.add(Token.normal(TokenKind.fromString("id"), text.toString()));
+                        text.delete(0, text.length());
+                    }
+                    // continue matching
+                }
+            }
+        }
     }
+
 
     /**
      * 获得词法分析的结果, 保证在调用了 run 方法之后调用
@@ -49,11 +161,11 @@ public class LexicalAnalyzer {
      * @return Token 列表
      */
     public Iterable<Token> getTokens() {
-        // TODO: 从词法分析过程中获取 Token 列表
+        // 从词法分析过程中获取 Token 列表
         // 词法分析过程可以使用 Stream 或 Iterator 实现按需分析
         // 亦可以直接分析完整个文件
         // 总之实现过程能转化为一列表即可
-        throw new NotImplementedException();
+        return result;
     }
 
     public void dumpTokens(String path) {
@@ -62,6 +174,4 @@ public class LexicalAnalyzer {
             StreamSupport.stream(getTokens().spliterator(), false).map(Token::toString).toList()
         );
     }
-
-
 }

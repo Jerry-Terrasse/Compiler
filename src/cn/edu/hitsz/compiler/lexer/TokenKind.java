@@ -49,6 +49,7 @@ public class TokenKind extends Term {
 
             allowed.put(id, new TokenKind(id, code));
         }
+        allowed.put(";", allowed.get("Semicolon"));
 
         // EOF
         allowed.put("$", eof);

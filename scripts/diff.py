@@ -25,8 +25,8 @@ def do_diff(std_path, src_path):
         print("The src file is the same as std file.")
     else:
         print(f"Different begin at line {line_no}:")
-        print("std: " + std_beginline)
-        print("src: " + src_beginline)
+        print("std:", std_beginline)
+        print("src:", src_beginline)
 
 
 if __name__ == '__main__':

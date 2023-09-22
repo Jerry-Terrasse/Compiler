@@ -29,6 +29,7 @@ public class Main {
         lexer.dumpTokens(FilePathConfig.TOKEN_PATH);
         final var tokens = lexer.getTokens();
         symbolTable.dumpTable(FilePathConfig.OLD_SYMBOL_TABLE);
+        System.exit(0);
 
         // 读取第三方程序构造的 LR 分析表
         final var tableLoader = new TableLoader();
