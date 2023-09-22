@@ -80,7 +80,7 @@ public class LexicalAnalyzer {
             text.append(cur);
             if (state == State.INIT && cur == '$') {
                 // finish
-                result.add(Token.simple(TokenKind.fromString("$")));
+                result.add(Token.eof());
                 break;
             }
             switch (state) {
