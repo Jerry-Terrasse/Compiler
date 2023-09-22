@@ -1,6 +1,5 @@
 package cn.edu.hitsz.compiler.lexer;
 
-import cn.edu.hitsz.compiler.NotImplementedException;
 import cn.edu.hitsz.compiler.symtab.SymbolTable;
 import cn.edu.hitsz.compiler.utils.FileUtils;
 
@@ -8,7 +7,7 @@ import java.util.*;
 import java.util.stream.StreamSupport;
 
 /**
- * TODO: 实验一: 实现词法分析
+ * 实验一: 实现词法分析
  * <br>
  * 你可能需要参考的框架代码如下:
  *
@@ -73,8 +72,8 @@ public class LexicalAnalyzer {
         boolean nxt = true;
         while (true) {
             if (nxt) {
+                assert !buffer.isEmpty();
                 cur = buffer.poll();
-                assert cur != 0;
             }
             nxt = true;
             text.append(cur);
@@ -98,7 +97,7 @@ public class LexicalAnalyzer {
                         case ')' -> state = State.R_PAR;
                         case 'i' -> state = State.KW_INT;
                         case 'r' -> state = State.KW_RETURN;
-                        case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> { state = State.INT_CONST; }
+                        case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> state = State.INT_CONST;
                         default -> {
                             if (Character.isLetter(cur)) {
                                 state = State.ID;
@@ -146,6 +145,7 @@ public class LexicalAnalyzer {
                         text.deleteCharAt(text.length()-1);
                         nxt = false; state = State.INIT;
                         result.add(Token.normal(TokenKind.fromString("id"), text.toString()));
+                        symbolTable.add(text.toString());
                         text.delete(0, text.length());
                     }
                     // continue matching
