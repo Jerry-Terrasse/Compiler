@@ -32,6 +32,10 @@ public class SymbolTable {
         return entry;
     }
 
+    public SymbolTableEntry findOrAdd(String text) {
+        return has(text) ? get(text) : add(text);
+    }
+
     /**
      * 在符号表中新增条目
      *

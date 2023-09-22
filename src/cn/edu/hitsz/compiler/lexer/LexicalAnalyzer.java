@@ -145,7 +145,7 @@ public class LexicalAnalyzer {
                         text.deleteCharAt(text.length()-1);
                         nxt = false; state = State.INIT;
                         result.add(Token.normal(TokenKind.fromString("id"), text.toString()));
-                        symbolTable.add(text.toString());
+                        symbolTable.findOrAdd(text.toString());
                         text.delete(0, text.length());
                     }
                     // continue matching
