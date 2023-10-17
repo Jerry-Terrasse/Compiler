@@ -51,6 +51,15 @@ public class LexicalAnalyzer {
         DIVIDE, // /
         L_PAR, // (
         R_PAR, // )
+
+        QUERY, // ?
+
+        COLON, // :
+
+        BIGGER, // >
+
+        SMALLER, // <
+
         KW_INT, // int, maybe -> ID
         KW_RETURN, // return, maybe -> ID
         ID, // 标识符[a-zA-Z_][a-zA-Z]*
@@ -95,6 +104,10 @@ public class LexicalAnalyzer {
                         case '/' -> state = State.DIVIDE;
                         case '(' -> state = State.L_PAR;
                         case ')' -> state = State.R_PAR;
+                        case '?' -> state = State.QUERY;
+                        case ':' -> state = State.COLON;
+                        case '>' -> state = State.BIGGER;
+                        case '<' -> state = State.SMALLER;
                         case 'i' -> state = State.KW_INT;
                         case 'r' -> state = State.KW_RETURN;
                         case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> state = State.INT_CONST;
@@ -106,13 +119,6 @@ public class LexicalAnalyzer {
                             }
                         }
                     }
-                }
-                case EQUAL, COMA, SEMICOLON, PLUS, MINUS, CROSS, DIVIDE, L_PAR, R_PAR -> {
-                    // commit
-                    text.deleteCharAt(text.length()-1);
-                    nxt = false; state = State.INIT;
-                    result.add(Token.simple(TokenKind.fromString(text.toString())));
-                    text.delete(0, text.length());
                 }
                 case KW_INT, KW_RETURN -> {
                     String kw = kwStr.get(state);
@@ -149,6 +155,13 @@ public class LexicalAnalyzer {
                         text.delete(0, text.length());
                     }
                     // continue matching
+                }
+                default -> {
+                    // commit
+                    text.deleteCharAt(text.length()-1);
+                    nxt = false; state = State.INIT;
+                    result.add(Token.simple(TokenKind.fromString(text.toString())));
+                    text.delete(0, text.length());
                 }
             }
         }
