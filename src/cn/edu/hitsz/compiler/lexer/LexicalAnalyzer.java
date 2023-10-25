@@ -78,7 +78,7 @@ public class LexicalAnalyzer {
                 case INIT -> {
                     switch (cur) {
                         case ' ', '\t', '\n', '\r' -> text.deleteCharAt(text.length()-1);
-                        case '=', '`', ';', '+', '-', '*', '/', '(', ')', '?', ':', '>', '<' -> state = State.SINGLE_CHAR_KW;
+                        case '=', ',', ';', '+', '-', '*', '/', '(', ')', '?', ':', '>', '<' -> state = State.SINGLE_CHAR_KW;
                         case 'i' -> state = State.KW_INT;
                         case 'r' -> state = State.KW_RETURN;
                         case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> state = State.INT_CONST;
@@ -94,11 +94,17 @@ public class LexicalAnalyzer {
                 case KW_INT, KW_RETURN -> {
                     String kw = kwStr.get(state);
                     if (text.length() > kw.length()) {
-                        // commit
-                        text.deleteCharAt(text.length()-1);
-                        nxt = false; state = State.INIT;
-                        result.add(Token.simple(TokenKind.fromString(text.toString())));
-                        text.delete(0, text.length());
+                        if(Character.isLetter(cur)) {
+                            // mismatch
+                            text.deleteCharAt(text.length()-1);
+                            nxt = false; state = State.ID;
+                        } else {
+                            // commit
+                            text.deleteCharAt(text.length()-1);
+                            nxt = false; state = State.INIT;
+                            result.add(Token.normal(TokenKind.fromString(kw), text.toString()));
+                            text.delete(0, text.length());
+                        }
                     } else if (kw.charAt(text.length()-1) != text.charAt(text.length()-1)) {
                         // mismatch
                         text.deleteCharAt(text.length()-1);
