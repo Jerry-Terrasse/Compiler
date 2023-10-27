@@ -2,36 +2,63 @@ package cn.edu.hitsz.compiler.parser;
 
 import cn.edu.hitsz.compiler.NotImplementedException;
 import cn.edu.hitsz.compiler.lexer.Token;
+import cn.edu.hitsz.compiler.lexer.TokenKind;
 import cn.edu.hitsz.compiler.parser.table.Production;
 import cn.edu.hitsz.compiler.parser.table.Status;
+import cn.edu.hitsz.compiler.parser.table.Term;
+import cn.edu.hitsz.compiler.symtab.SourceCodeType;
 import cn.edu.hitsz.compiler.symtab.SymbolTable;
+
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Stack;
 
 // TODO: 实验三: 实现语义分析
 public class SemanticAnalyzer implements ActionObserver {
+    private final Stack<Token> stack = new Stack<>();
+    private SymbolTable symbolTable = null;
 
     @Override
     public void whenAccept(Status currentStatus) {
-        // TODO: 该过程在遇到 Accept 时要采取的代码动作
-        throw new NotImplementedException();
+        assert stack.size() == 1;
+        assert stack.pop() == null;
     }
 
     @Override
     public void whenReduce(Status currentStatus, Production production) {
-        // TODO: 该过程在遇到 reduce production 时要采取的代码动作
-        throw new NotImplementedException();
+        switch (production.index()) {
+            case 5 -> { // D -> int
+                var kw = stack.pop();
+                assert kw.getKind() == TokenKind.fromString("int");
+                stack.push(kw);
+            }
+            case 4 -> { // S -> D id
+                var id = stack.pop();
+                var d = stack.pop();
+                assert id.getKind() == TokenKind.fromString("id");
+                assert d.getKind() == TokenKind.fromString("int");
+                var entry = symbolTable.get(id.getText());
+                entry.setType(SourceCodeType.Int);
+
+                stack.push(null);
+            }
+            default -> {
+                for(var rhs: production.body()) {
+                    stack.pop();
+                }
+                stack.push(null);
+            }
+        }
     }
 
     @Override
     public void whenShift(Status currentStatus, Token currentToken) {
-        // TODO: 该过程在遇到 shift 时要采取的代码动作
-        throw new NotImplementedException();
+        stack.push(currentToken);
     }
 
     @Override
     public void setSymbolTable(SymbolTable table) {
-        // TODO: 设计你可能需要的符号表存储结构
-        // 如果需要使用符号表的话, 可以将它或者它的一部分信息存起来, 比如使用一个成员变量存储
-        throw new NotImplementedException();
+        this.symbolTable = table;
     }
 }
 

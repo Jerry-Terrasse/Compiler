@@ -52,11 +52,11 @@ public class Main {
 
         // 加入用作语义检查的 Observer
         final var semanticAnalyzer = new SemanticAnalyzer();
-//        parser.registerObserver(semanticAnalyzer);
+        parser.registerObserver(semanticAnalyzer);
 
         // 加入用作 IR 生成的 Observer
         final var irGenerator = new IRGenerator();
-//        parser.registerObserver(irGenerator);
+        parser.registerObserver(irGenerator);
 
         // 执行语法解析并在解析过程中依次调用各 Observer
         parser.run();
@@ -64,7 +64,6 @@ public class Main {
         // 各 Observer 输出结果
         productionCollector.dumpToFile(FilePathConfig.PARSER_PATH);
         symbolTable.dumpTable(FilePathConfig.NEW_SYMBOL_TABLE);
-        System.exit(0);
         final var instructions = irGenerator.getIR();
         irGenerator.dumpIR(FilePathConfig.INTERMEDIATE_CODE_PATH);
 

@@ -39,6 +39,15 @@ public class Instruction {
     public static Instruction createMul(IRVariable result, IRValue lhs, IRValue rhs) {
         return new Instruction(InstructionKind.MUL, result, List.of(lhs, rhs));
     }
+    public static Instruction createGt(IRVariable result, IRValue lhs, IRValue rhs) {
+        return new Instruction(InstructionKind.GT, result, List.of(lhs, rhs));
+    }
+    public static Instruction createLt(IRVariable result, IRValue lhs, IRValue rhs) {
+        return new Instruction(InstructionKind.LT, result, List.of(lhs, rhs));
+    }
+    public static Instruction createCmov(IRVariable result, IRValue pred, IRValue trueValue) {
+        return new Instruction(InstructionKind.CMOV, result, List.of(pred, trueValue));
+    }
 
     public static Instruction createMov(IRVariable result, IRValue from) {
         return new Instruction(InstructionKind.MOV, result, List.of(from));
