@@ -1,0 +1,40 @@
+P -> S_list
+{ P.code = S_list.code; };
+S_list -> S Semicolon S_list_1
+{ S_list.code = new Code(S.code, S_list_1.code); };
+S_list -> S Semicolon
+{ S_list.code = S.code; };
+S -> D id
+{ S.code = new Declare(D.type, id.name); };
+D -> int
+{ D.type = "int"; };
+S -> id = F
+{ S.code = new Assign(id.name, F.code); };
+S -> return F
+{ S.code = new Return(F.code); };
+F -> G ? E1 : E2
+{ F.code = new Conditional(G.code, E1.code, E2.code); };
+F -> E
+{ F.code = E.code; };
+G -> E1 > E2
+{ G.code = new Greater(E1.code, E2.code); };
+G -> E1 < E2
+{ G.code = new Less(E1.code, E2.code); };
+G -> E
+{ G.code = E.code; };
+E -> E1 + A
+{ E.code = new Add(E1.code, A.code); };
+E -> E1 - A
+{ E.code = new Subtract(E1.code, A.code); };
+E -> A
+{ E.code = A.code; };
+A -> A1 * B
+{ A.code = new Multiply(A1.code, B.code); };
+A -> B
+{ A.code = B.code; };
+B -> ( F )
+{ B.code = F.code; };
+B -> id
+{ B.code = new Id(id.name); };
+B -> IntConst
+{ B.code = new IntConst(IntConst.value); };
