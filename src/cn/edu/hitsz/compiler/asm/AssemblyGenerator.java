@@ -1,9 +1,16 @@
 package cn.edu.hitsz.compiler.asm;
 
-import cn.edu.hitsz.compiler.NotImplementedException;
+import cn.edu.hitsz.compiler.ir.IRValue;
+import cn.edu.hitsz.compiler.ir.IRVariable;
 import cn.edu.hitsz.compiler.ir.Instruction;
+import cn.edu.hitsz.compiler.ir.InstructionKind;
+import cn.edu.hitsz.compiler.utils.FileUtils;
 
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+
+import static java.util.Collections.swap;
 
 
 /**
@@ -22,6 +29,11 @@ import java.util.List;
  */
 public class AssemblyGenerator {
 
+    private List<Instruction> instructions = null;
+    private final HashMap<IRVariable, Integer> lastUse = new HashMap<>();
+    private final HashMap<Integer, List<IRVariable>> timeToUnbind = new HashMap<>();
+    private final List<RVInstruction> rvInsts = new LinkedList<>();
+
     /**
      * 加载前端提供的中间代码
      * <br>
@@ -31,8 +43,32 @@ public class AssemblyGenerator {
      * @param originInstructions 前端提供的中间代码
      */
     public void loadIR(List<Instruction> originInstructions) {
-        // TODO: 读入前端提供的中间代码并生成所需要的信息
-        throw new NotImplementedException();
+        this.instructions = originInstructions;
+        for(int i = 0; i < instructions.size(); i++) {
+            updateLastUse(instructions.get(i).getResult(), i);
+        }
+        for(int i = 0; i < instructions.size(); i++) {
+            for(IRValue var : instructions.get(i).getOperands()) {
+                if(var.isIRVariable()) {
+                    updateLastUse((IRVariable) var, i);
+                }
+            }
+        }
+
+        for(IRVariable var : lastUse.keySet()) {
+            if(!timeToUnbind.containsKey(lastUse.get(var))) {
+                timeToUnbind.put(lastUse.get(var), new LinkedList<>());
+            }
+            timeToUnbind.get(lastUse.get(var)).add(var);
+        }
+    }
+
+    private void updateLastUse(IRVariable var, int index) {
+        if (lastUse.containsKey(var)) {
+            lastUse.put(var, Math.max(lastUse.get(var), index));
+        } else {
+            lastUse.put(var, index);
+        }
     }
 
 
@@ -46,8 +82,88 @@ public class AssemblyGenerator {
      * 成前完成建立, 与代码生成的过程相关的信息可自行设计数据结构进行记录并动态维护.
      */
     public void run() {
-        // TODO: 执行寄存器分配与代码生成
-        throw new NotImplementedException();
+        for(int i = 0; i < instructions.size(); ++i) {
+            var inst = instructions.get(i);
+            var kind = inst.getKind();
+            if(kind.isUnary()) {
+                // only MOV
+                var src = inst.getOperands().get(0);
+                var dst = Reg.getReg(inst.getResult());
+                if (src.isImmediate()) {
+                    rvInsts.add(new RVInstruction("li", List.of(
+                            dst.toString(),
+                            Reg.getReg((IRVariable) src).toString()
+                    )));
+                } else {
+                    rvInsts.add(new RVInstruction("addi", List.of(
+                            dst.toString(),
+                            src.toString(),
+                            "0"
+                    )));
+                }
+            } else if(kind.isReturn()) {
+                var src = inst.getOperands().get(0);
+                if(src.isImmediate()) {
+                    rvInsts.add(new RVInstruction("li", List.of(
+                        "x10",
+                        src.toString()
+                    )));
+                } else {
+                    rvInsts.add(new RVInstruction("addi", List.of(
+                        "x10",
+                        Reg.getReg((IRVariable) src).toString(),
+                        "0"
+                    )));
+                }
+                return;
+            } else if(!kind.isCommutable()) {
+                var dst = Reg.getReg(inst.getResult());
+                var op1 = inst.getOperands().get(0);
+                var op2 = inst.getOperands().get(1);
+                if(op1.isImmediate() && op2.isImmediate()) {
+
+                } else {
+                    IRVariable op1Tmp = null, op2Tmp = null;
+
+                    if(op1.isImmediate()) {
+                        op1Tmp = IRVariable.temp();
+                        rvInsts.add(new RVInstruction("li", List.of(
+                            Reg.getReg(op1Tmp).toString(),
+                            op1.toString()
+                        )));
+                    }
+                    if(op2.isImmediate()) {
+                        op2Tmp = IRVariable.temp();
+                        rvInsts.add(new RVInstruction("li", List.of(
+                            Reg.getReg(op2Tmp).toString(),
+                            op2.toString()
+                        )));
+                    }
+                    String op = switch (kind) {
+                        case SUB -> "sub";
+                        case GT, LT -> "slt";
+                        default -> throw new IllegalStateException("Unexpected value: " + kind);
+                    };
+//                    rvInsts.add(new RVInstruction(""))
+                }
+            } else { // Binary
+                var dst = Reg.getReg(inst.getResult());
+                var op1 = inst.getOperands().get(0);
+                var op2 = inst.getOperands().get(1);
+                if(op1.isImmediate() && kind != InstructionKind.SUB && kind != InstructionKind.CMOV) {
+                    op1 = inst.getOperands().get(1);
+                    op2 = inst.getOperands().get(0);
+                }
+//                switch (kind) {
+//                    case SUB -> {
+//                        var dst = Reg.getReg(inst.getResult());
+//                        var op1 = inst.getOperands().get(0);
+//                        var op2 = inst.getOperands().get(1);
+//
+//                    }
+//                }
+            }
+        }
     }
 
 
@@ -57,8 +173,10 @@ public class AssemblyGenerator {
      * @param path 输出文件路径
      */
     public void dump(String path) {
-        // TODO: 输出汇编代码到文件
-        throw new NotImplementedException();
+        FileUtils.writeLines(
+            path,
+            rvInsts.stream().map(RVInstruction::toString).toList()
+        );
     }
 }
 
