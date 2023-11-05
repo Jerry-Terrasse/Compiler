@@ -44,6 +44,25 @@ public class IREmulator {
                     environment.put(instruction.getResult(), lhs * rhs);
                 }
 
+                case LT -> {
+                    final var lhs = eval(instruction.getLHS());
+                    final var rhs = eval(instruction.getRHS());
+                    environment.put(instruction.getResult(), lhs < rhs ? 1 : 0);
+                }
+
+                case GT -> {
+                    final var lhs = eval(instruction.getLHS());
+                    final var rhs = eval(instruction.getRHS());
+                    environment.put(instruction.getResult(), lhs > rhs ? 1 : 0);
+                }
+
+                case CMOV -> {
+                    final var pred = eval(instruction.getLHS());
+                    final var trueValue = eval(instruction.getRHS());
+                    final var falseValue = eval(instruction.getResult());
+                    environment.put(instruction.getResult(), pred != 0 ? trueValue : falseValue);
+                }
+
                 case RET -> this.returnValue = eval(instruction.getReturnValue());
 
                 default -> throw new RuntimeException("Unknown instruction kind: " + instruction.getKind());

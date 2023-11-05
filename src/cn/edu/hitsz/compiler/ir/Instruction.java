@@ -64,17 +64,17 @@ public class Instruction {
     }
 
     public IRVariable getResult() {
-        ensureKindMatch(Set.of(InstructionKind.ADD, InstructionKind.SUB, InstructionKind.MUL, InstructionKind.MOV));
+        ensureKindMatch(Set.of(InstructionKind.ADD, InstructionKind.SUB, InstructionKind.MUL, InstructionKind.MOV, InstructionKind.GT, InstructionKind.LT, InstructionKind.CMOV));
         return result;
     }
 
     public IRValue getLHS() {
-        ensureKindMatch(Set.of(InstructionKind.ADD, InstructionKind.SUB, InstructionKind.MUL));
+        ensureKindMatch(Set.of(InstructionKind.ADD, InstructionKind.SUB, InstructionKind.MUL, InstructionKind.GT, InstructionKind.LT, InstructionKind.CMOV));
         return operands.get(0);
     }
 
     public IRValue getRHS() {
-        ensureKindMatch(Set.of(InstructionKind.ADD, InstructionKind.SUB, InstructionKind.MUL));
+        ensureKindMatch(Set.of(InstructionKind.ADD, InstructionKind.SUB, InstructionKind.MUL, InstructionKind.GT, InstructionKind.LT, InstructionKind.CMOV));
         return operands.get(1);
     }
 
