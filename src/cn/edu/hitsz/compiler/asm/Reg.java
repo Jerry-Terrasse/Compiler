@@ -30,10 +30,6 @@ public class Reg {
         var2reg.put(var, reg);
     }
     private static void unbind(Reg reg, IRVariable var) {
-        assert reg2var.containsKey(reg);
-        assert var2reg.containsKey(var);
-        assert reg2var.get(reg) == var;
-        assert var2reg.get(var) == reg;
         reg2var.remove(reg);
         var2reg.remove(var);
     }
@@ -49,6 +45,10 @@ public class Reg {
             }
         }
         throw new RuntimeException("No available register");
+    }
+    public static void freeReg(IRVariable var) {
+        assert var2reg.containsKey(var);
+        unbind(var2reg.get(var), var);
     }
 
     @Override

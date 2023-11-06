@@ -1,11 +1,9 @@
 package cn.edu.hitsz.compiler.asm;
 
-import cn.edu.hitsz.compiler.ir.IRValue;
-import cn.edu.hitsz.compiler.ir.IRVariable;
-import cn.edu.hitsz.compiler.ir.Instruction;
-import cn.edu.hitsz.compiler.ir.InstructionKind;
+import cn.edu.hitsz.compiler.ir.*;
 import cn.edu.hitsz.compiler.utils.FileUtils;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -43,15 +41,26 @@ public class AssemblyGenerator {
      * @param originInstructions 前端提供的中间代码
      */
     public void loadIR(List<Instruction> originInstructions) {
-        this.instructions = originInstructions;
+        instructions = originInstructions;
         for(int i = 0; i < instructions.size(); i++) {
+            if(instructions.get(i).getKind().isReturn()) {
+                continue;
+            }
             updateLastUse(instructions.get(i).getResult(), i);
         }
         for(int i = 0; i < instructions.size(); i++) {
-            for(IRValue var : instructions.get(i).getOperands()) {
+            var inst = instructions.get(i);
+            for(IRValue var : inst.getOperands()) {
                 if(var.isIRVariable()) {
                     updateLastUse((IRVariable) var, i);
                 }
+            }
+            if(inst.getKind() == InstructionKind.GT) {
+                instructions.set(i, Instruction.createLt(
+                    inst.getResult(),
+                    inst.getOperands().get(1),
+                    inst.getOperands().get(0)
+                ));
             }
         }
 
@@ -92,12 +101,12 @@ public class AssemblyGenerator {
                 if (src.isImmediate()) {
                     rvInsts.add(new RVInstruction("li", List.of(
                             dst.toString(),
-                            Reg.getReg((IRVariable) src).toString()
+                            src.toString()
                     )));
                 } else {
                     rvInsts.add(new RVInstruction("addi", List.of(
                             dst.toString(),
-                            src.toString(),
+                            Reg.getReg((IRVariable) src).toString(),
                             "0"
                     )));
                 }
@@ -116,21 +125,53 @@ public class AssemblyGenerator {
                     )));
                 }
                 return;
-            } else if(!kind.isCommutable()) {
+            } else if(kind == InstructionKind.ADD && (inst.getLHS().isImmediate() != inst.getRHS().isImmediate())) {
+                // ADD can be optimized to ADDI
+                var dst = Reg.getReg(inst.getResult());
+                var op1 = inst.getOperands().get(0);
+                var op2 = inst.getOperands().get(1);
+                if(op1.isImmediate()) {
+                    op1 = inst.getOperands().get(1);
+                    op2 = inst.getOperands().get(0);
+                }
+                // now op1 is variable, op2 is immediate
+                rvInsts.add(new RVInstruction("addi", List.of(
+                        dst.toString(),
+                        Reg.getReg((IRVariable) op1).toString(),
+                        op2.toString()
+                )));
+            } else {
+                // SUB GT LT CMOV MUL ADD
                 var dst = Reg.getReg(inst.getResult());
                 var op1 = inst.getOperands().get(0);
                 var op2 = inst.getOperands().get(1);
                 if(op1.isImmediate() && op2.isImmediate()) {
-
+                    var val1 = Integer.parseInt(op1.toString());
+                    var val2 = Integer.parseInt(op2.toString());
+                    Integer result = switch (kind) {
+                        case ADD -> val1 + val2;
+                        case SUB -> val1 - val2;
+                        case LT -> val1 < val2 ? 1 : 0;
+                        case MUL -> val1 * val2;
+                        case CMOV -> val1 == 0 ? null : val2;
+                        default -> throw new IllegalStateException("Unexpected value: " + kind);
+                    };
+                    if(result != null) {
+                        rvInsts.add(new RVInstruction("li", List.of(
+                                dst.toString(),
+                                String.valueOf(result)
+                        )));
+                    }
                 } else {
                     IRVariable op1Tmp = null, op2Tmp = null;
-
                     if(op1.isImmediate()) {
                         op1Tmp = IRVariable.temp();
                         rvInsts.add(new RVInstruction("li", List.of(
                             Reg.getReg(op1Tmp).toString(),
                             op1.toString()
                         )));
+                    } else {
+                        op1Tmp = (IRVariable) op1;
                     }
                     if(op2.isImmediate()) {
                         op2Tmp = IRVariable.temp();
@@ -138,30 +179,49 @@ public class AssemblyGenerator {
                             Reg.getReg(op2Tmp).toString(),
                             op2.toString()
                         )));
+                    } else {
+                        op2Tmp = (IRVariable) op2;
                     }
-                    String op = switch (kind) {
-                        case SUB -> "sub";
-                        case GT, LT -> "slt";
-                        default -> throw new IllegalStateException("Unexpected value: " + kind);
-                    };
-//                    rvInsts.add(new RVInstruction(""))
+                    if(kind == InstructionKind.CMOV) {
+                        rvInsts.add(new RVInstruction("beq", List.of(
+                            Reg.getReg(op1Tmp).toString(),
+                            "x0",
+                            "L" + i
+                        )));
+                        rvInsts.add(new RVInstruction("addi", List.of(
+                            dst.toString(),
+                            Reg.getReg(op2Tmp).toString(),
+                            "0"
+                        )));
+                        rvInsts.add(new RVInstruction("L" + i + ":", new ArrayList<>()));
+                    } else {
+                        String op = switch (kind) {
+                            case ADD -> "add";
+                            case SUB -> "sub";
+                            case LT -> "slt";
+                            case MUL -> "mul";
+                            default -> throw new IllegalStateException("Unexpected value: " + kind);
+                        };
+                        rvInsts.add(new RVInstruction(op, List.of(
+                                dst.toString(),
+                                Reg.getReg(op1Tmp).toString(),
+                                Reg.getReg(op2Tmp).toString()
+                        )));
+                    }
+                    if(op1.isImmediate()) {
+                        Reg.freeReg(op1Tmp);
+                    }
+                    if(op2.isImmediate()) {
+                        Reg.freeReg(op2Tmp);
+                    }
                 }
-            } else { // Binary
-                var dst = Reg.getReg(inst.getResult());
-                var op1 = inst.getOperands().get(0);
-                var op2 = inst.getOperands().get(1);
-                if(op1.isImmediate() && kind != InstructionKind.SUB && kind != InstructionKind.CMOV) {
-                    op1 = inst.getOperands().get(1);
-                    op2 = inst.getOperands().get(0);
-                }
-//                switch (kind) {
-//                    case SUB -> {
-//                        var dst = Reg.getReg(inst.getResult());
-//                        var op1 = inst.getOperands().get(0);
-//                        var op2 = inst.getOperands().get(1);
-//
-//                    }
-//                }
+            }
+            // free register
+            if (timeToUnbind.get(i) == null) {
+                continue;
+            }
+            for(IRVariable var: timeToUnbind.get(i)) {
+                Reg.freeReg(var);
             }
         }
     }

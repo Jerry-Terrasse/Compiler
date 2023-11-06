@@ -26,8 +26,4 @@ public enum InstructionKind {
     public boolean isReturn() {
         return this == RET;
     }
-
-    public boolean isCommutable() {
-        return this == ADD || this == MUL;
-    }
 }
